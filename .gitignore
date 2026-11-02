@@ -1,0 +1,6 @@
+.godot/
+.import/
+build/
+export.cfg
+*.apk.idsig
+.DS_Store
