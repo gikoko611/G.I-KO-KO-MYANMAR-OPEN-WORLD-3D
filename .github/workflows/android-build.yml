@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
 
-# a newer push cancels any stuck/superseded build
+# a newer push cancels any superseded build
 concurrency:
   group: android-build
   cancel-in-progress: true
@@ -21,19 +21,35 @@ jobs:
     runs-on: ubuntu-latest
     container: barichello/godot-ci:3.5.2
     timeout-minutes: 25
+    env:
+      # godot-ci bakes export templates + editor settings + debug keystore
+      # under /root; GitHub Actions container jobs default HOME=/github/home,
+      # which makes Godot fail with "no export template found".
+      HOME: /root
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Godot 3.5.2: --export does the resource import itself in one pass.
-      # (Do NOT use --import / -e --quit-after: those flags are Godot 4 only
-      # and would hang a 3.5.2 headless run on the running project.)
+      # Godot 3.5.2: --export imports all resources and exports in one pass.
+      # (Do NOT use --import / --check-only: those flags are Godot 4 only and
+      # would hang a 3.5.2 headless run on the running project.)
       - name: Export Android APK (ARMv7)
         run: |
           mkdir -p build
-          godot --headless --path . --export "Android" build/GiKoKoMyanmarOpenWorld3D.apk
+          set -o pipefail
+          godot --headless --path . --export "Android" build/GiKoKoMyanmarOpenWorld3D.apk 2>&1 | tee godot_export.log
           test -f build/GiKoKoMyanmarOpenWorld3D.apk
           ls -lh build/GiKoKoMyanmarOpenWorld3D.apk
+
+      - name: Export log to job summary
+        if: always()
+        run: |
+          {
+            echo "## Godot export log (last 60 lines)"
+            echo '```'
+            tail -n 60 godot_export.log || echo "(no log file)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify ARMv7 library (advisory)
         continue-on-error: true
