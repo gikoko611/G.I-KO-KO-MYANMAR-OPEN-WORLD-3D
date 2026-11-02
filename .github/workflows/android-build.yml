@@ -34,6 +34,7 @@ jobs:
       # (Do NOT use --import / --check-only: those flags are Godot 4 only and
       # would hang a 3.5.2 headless run on the running project.)
       - name: Export Android APK (ARMv7)
+        id: export
         run: |
           mkdir -p build
           set -o pipefail
@@ -41,15 +42,41 @@ jobs:
           test -f build/GiKoKoMyanmarOpenWorld3D.apk
           ls -lh build/GiKoKoMyanmarOpenWorld3D.apk
 
-      - name: Export log to job summary
+      - name: Diagnostics (always)
         if: always()
         run: |
           {
-            echo "## Godot export log (last 60 lines)"
+            echo "godot version: $(godot --version 2>&1 || true)"
+            echo "HOME=$HOME USER=$(whoami || true)"
+            echo "--- template dirs ---"
+            ls -la /root/.local/share/godot/export_templates/ 2>&1 || true
+            echo "--- godot config ---"
+            ls -la /root/.config/godot/ 2>&1 || true
+            echo "--- jdk ---"
+            ls /usr/lib/jvm/ 2>&1 || true
+            echo "--- export log (last 120 lines) ---"
+            tail -n 120 godot_export.log 2>&1 || true
+          } > ci_diagnostics.txt
+          cat ci_diagnostics.txt
+
+      - name: Publish diagnostics to job summary
+        if: always()
+        run: |
+          {
+            echo "## CI diagnostics"
             echo '```'
-            tail -n 60 godot_export.log || echo "(no log file)"
+            cat ci_diagnostics.txt || echo "(none)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit diagnostics on failure (for debugging without log access)
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci_diagnostics.txt
+          git commit -m "CI diagnostics from failed build [skip ci]"
+          git push
 
       - name: Verify ARMv7 library (advisory)
         continue-on-error: true
