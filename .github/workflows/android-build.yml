@@ -3,91 +3,40 @@ name: Android Build
 on:
   push:
     branches: [main, master]
-    tags: ["v*"]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
 permissions:
   contents: write
 
-# a newer push cancels any superseded build
-concurrency:
-  group: android-build
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: barichello/godot-ci:3.5.2
-    timeout-minutes: 25
-    env:
-      # godot-ci bakes export templates + editor settings + debug keystore
-      # under /root; GitHub Actions container jobs default HOME=/github/home,
-      # which makes Godot fail with "no export template found".
-      HOME: /root
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Godot 3.5.2: --export imports all resources and exports in one pass.
-      # (Do NOT use --import / --check-only: those flags are Godot 4 only and
-      # would hang a 3.5.2 headless run on the running project.)
-      - name: Export Android APK (ARMv7)
-        id: export
+      - name: Godot Android export (3.5.2, ARMv7)
+        uses: dulvui/godot-android-export@v3.0.0
+        with:
+          godot-version: 3.5.2
+
+      - name: Validate all scripts
         run: |
-          mkdir -p build
-          set -o pipefail
-          godot --headless --path . --export "Android" build/GiKoKoMyanmarOpenWorld3D.apk 2>&1 | tee godot_export.log
+          status=0
+          echo "" > check.log
+          while IFS= read -r f; do
+            if ! godot --path . --check-only -s "res://$f" 2>> check.log; then
+              echo "PARSE FAIL: $f"
+              status=1
+            fi
+          done < <(find scripts -name "*.gd" | sort)
+          cat check.log
+          exit $status
+
+      - name: Verify APK
+        run: |
           test -f build/GiKoKoMyanmarOpenWorld3D.apk
-          ls -lh build/GiKoKoMyanmarOpenWorld3D.apk
-
-      - name: Diagnostics (always)
-        if: always()
-        run: |
-          {
-            echo "godot path: $(which godot 2>&1 || true)"
-            echo "godot version: $(godot --version 2>&1 || true)"
-            echo "HOME=$HOME USER=$(whoami 2>&1 || true) PWD=$(pwd)"
-            echo "--- template dirs ---"
-            ls -la /root/.local/share/godot/export_templates/ 2>&1 || true
-            echo "--- godot config ---"
-            ls -la /root/.config/godot/ 2>&1 || true
-            echo "--- jdk ---"
-            ls /usr/lib/jvm/ 2>&1 || true
-            echo "--- export_presets.cfg ---"
-            cat export_presets.cfg 2>&1 || true
-            echo "--- git status ---"
-            git status --short 2>&1 || true
-            echo "--- export log (last 200 lines) ---"
-            tail -n 200 godot_export.log 2>&1 || true
-          } > ci_diagnostics.txt
-          cat ci_diagnostics.txt
-
-      - name: Publish diagnostics to job summary
-        if: always()
-        run: |
-          {
-            echo "## CI diagnostics"
-            echo '```'
-            cat ci_diagnostics.txt || echo "(none)"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Commit diagnostics on failure (for debugging without log access)
-        if: failure()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci_diagnostics.txt
-          git commit -m "CI diagnostics from failed build [skip ci]"
-          git push origin HEAD:main
-
-      - name: Verify ARMv7 library (advisory)
-        continue-on-error: true
-        run: |
-          unzip -l build/GiKoKoMyanmarOpenWorld3D.apk | grep "armeabi-v7a" || echo "WARN: no armeabi-v7a entry listed"
-          unzip -l build/GiKoKoMyanmarOpenWorld3D.apk | grep "libgodot" || echo "WARN: no libgodot entry listed"
+          ls -la build/
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -95,22 +44,28 @@ jobs:
           name: GiKoKoMyanmarOpenWorld3D-apk
           path: build/GiKoKoMyanmarOpenWorld3D.apk
 
-      - name: Create GitHub release
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.0
-          name: "G.I KO KO - Myanmar Open World 3D v1.0.0"
+          name: G.I KO KO – Myanmar Open World 3D v1.0.0
           body: |
-            G.I KO KO - Myanmar Open World 3D v1.0.0
+            Open-world farming / survival / exploration game set in a Myanmar
+            river valley. Godot 3.5.2, GLES2, ARMv7 (armeabi-v7a) for Android
+            10+ — optimized for Redmi 9A class phones.
+
+            Note: all visuals and audio are procedural placeholders.
+
             Powered by I KO KO
-
-            3D open-world farming, survival and exploration game set in a
-            Myanmar river valley. Godot 3.5.2, GLES2, Android 10+
-            (armeabi-v7a / 32-bit), tuned for Redmi 9A class devices.
-
-            Install: download the APK below, allow "install unknown apps",
-            then open. Set Settings -> Graphics to Low on 2-3 GB RAM phones.
           files: build/GiKoKoMyanmarOpenWorld3D.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Record failure log on ci-status branch
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-status
+          cp check.log .ci-last-error.log 2>/dev/null || echo "unknown error (see Actions log)" > .ci-last-error.log
+          git add .ci-last-error.log
+          git commit -m "ci: record failure log" || true
+          git push origin ci-status --force
