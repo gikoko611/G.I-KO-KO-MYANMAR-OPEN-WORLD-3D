@@ -68,6 +68,9 @@ jobs:
               echo 'export/android/debug_keystore = "/home/runner/.android/debug.keystore"'
               echo 'export/android/debug_keystore_user = "androiddebugkey"'
               echo 'export/android/debug_keystore_password = "android"'
+              echo 'export/android/release_keystore = "/home/runner/.android/debug.keystore"'
+              echo 'export/android/release_keystore_user = "androiddebugkey"'
+              echo 'export/android/release_keystore_password = "android"'
               if [ -n "$JS" ]; then echo "export/android/jarsigner = \"$JS\""; fi
             } > ~/.config/godot/editor_settings-3.tres
             echo "--- editor_settings-3.tres ---"
@@ -96,15 +99,17 @@ jobs:
         run: |
           set -x
           mkdir -p build
-          godot --path . --export "Android" build/GiKoKoMyanmarOpenWorld3D.apk 2>&1 | tee export.log
+          godot --path . --export "Android" build/GiKoKoMyanmarOpenWorld3D.apk > export.log 2>&1
+          cat export.log
           test -f build/GiKoKoMyanmarOpenWorld3D.apk
           ls -la build/
 
-      - name: Verify ARMv7 library inside APK
+      - name: Verify APK signature + ARMv7 library
         id: verify
         run: |
           test -f build/GiKoKoMyanmarOpenWorld3D.apk
           unzip -l build/GiKoKoMyanmarOpenWorld3D.apk | grep -i "armeabi" || echo "WARNING: no armeabi entry listed"
+          jarsigner -verify build/GiKoKoMyanmarOpenWorld3D.apk
 
       - name: Upload APK artifact
         if: steps.export.outcome == 'success'
@@ -114,7 +119,7 @@ jobs:
           path: build/GiKoKoMyanmarOpenWorld3D.apk
 
       - name: Create GitHub Release v1.0.0
-        if: steps.export.outcome == 'success'
+        if: steps.export.outcome == 'success' && steps.verify.outcome == 'success'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.0
