@@ -1,0 +1,222 @@
+sha: 7e3e1053b058c236d9d18952474a783355327e1b
+run: 41553981742 attempt 1
+job status: success
+step checkout: success
+step java: success
+step install: success
+step settings: success
+step keystore: success
+step import: success
+step export: success
+step verify: success
+===== setup.log =====
++ wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_linux_headless.64.zip
++ wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_export_templates.tpz
++ unzip -o Godot_v3.5.2-stable_linux_headless.64.zip
+Archive:  Godot_v3.5.2-stable_linux_headless.64.zip
+  inflating: Godot_v3.5.2-stable_linux_headless.64  
++ unzip -o Godot_v3.5.2-stable_export_templates.tpz
+Archive:  Godot_v3.5.2-stable_export_templates.tpz
+  inflating: templates/android_debug.apk  
+  inflating: templates/android_release.apk  
+  inflating: templates/android_source.zip  
+  inflating: templates/iphone.zip    
+  inflating: templates/linux_x11_32_debug  
+  inflating: templates/linux_x11_32_release  
+  inflating: templates/linux_x11_64_debug  
+  inflating: templates/linux_x11_64_release  
+  inflating: templates/osx.zip       
+  inflating: templates/uwp_arm_debug.zip  
+  inflating: templates/uwp_arm_release.zip  
+  inflating: templates/uwp_x64_debug.zip  
+  inflating: templates/uwp_x64_release.zip  
+  inflating: templates/uwp_x86_debug.zip  
+  inflating: templates/uwp_x86_release.zip  
+ extracting: templates/version.txt   
+  inflating: templates/webassembly_debug.zip  
+  inflating: templates/webassembly_gdnative_debug.zip  
+  inflating: templates/webassembly_gdnative_release.zip  
+  inflating: templates/webassembly_release.zip  
+  inflating: templates/webassembly_threads_debug.zip  
+  inflating: templates/webassembly_threads_release.zip  
+  inflating: templates/windows_32_debug.exe  
+  inflating: templates/windows_32_release.exe  
+  inflating: templates/windows_64_debug.exe  
+  inflating: templates/windows_64_release.exe  
++ mkdir -p /home/runner/.local/share/godot/templates/3.5.2.stable
++ mkdir -p /home/runner/.config/godot
++ mv Godot_v3.5.2-stable_linux_headless.64 /usr/local/bin/godot
++ mv templates/android_debug.apk templates/android_release.apk templates/android_source.zip templates/iphone.zip templates/linux_x11_32_debug templates/linux_x11_32_release templates/linux_x11_64_debug templates/linux_x11_64_release templates/osx.zip templates/uwp_arm_debug.zip templates/uwp_arm_release.zip templates/uwp_x64_debug.zip templates/uwp_x64_release.zip templates/uwp_x86_debug.zip templates/uwp_x86_release.zip templates/version.txt templates/webassembly_debug.zip templates/webassembly_gdnative_debug.zip templates/webassembly_gdnative_release.zip templates/webassembly_release.zip templates/webassembly_threads_debug.zip templates/webassembly_threads_release.zip templates/windows_32_debug.exe templates/windows_32_release.exe templates/windows_64_debug.exe templates/windows_64_release.exe /home/runner/.local/share/godot/templates/3.5.2.stable/
++ rm -f Godot_v3.5.2-stable_linux_headless.64.zip Godot_v3.5.2-stable_export_templates.tpz
++ which godot
+/usr/local/bin/godot
++ godot --version
+3.5.2.stable.official.170ba337a
++ echo 'NOTE: godot --version returned non-zero (headless 3.5.2 quirk)'
+NOTE: godot --version returned non-zero (headless 3.5.2 quirk)
++ ls /home/runner/.local/share/godot/templates/3.5.2.stable/
+android_debug.apk
+android_release.apk
+android_source.zip
+iphone.zip
+linux_x11_32_debug
+linux_x11_32_release
+linux_x11_64_debug
+linux_x11_64_release
+osx.zip
+uwp_arm_debug.zip
+uwp_arm_release.zip
+uwp_x64_debug.zip
+uwp_x64_release.zip
+uwp_x86_debug.zip
+uwp_x86_release.zip
+version.txt
+webassembly_debug.zip
+webassembly_gdnative_debug.zip
+webassembly_gdnative_release.zip
+webassembly_release.zip
+webassembly_threads_debug.zip
+webassembly_threads_release.zip
+windows_32_debug.exe
+windows_32_release.exe
+windows_64_debug.exe
+windows_64_release.exe
+Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) with a validity of 10,000 days
+	for: CN=Android Debug, O=Android, C=US
+[Storing /home/runner/.android/debug.keystore]
+total 12
+drwxr-xr-x  2 runner runner 4096 Nov  3 00:36 .
+drwxr-x--- 14 runner runner 4096 Nov  3 00:36 ..
+-rw-r--r--  1 runner runner 2666 Nov  3 00:36 debug.keystore
+--- editor_settings-3.tres ---
+[gd_resource type="EditorSettings" format=2]
+
+[resource]
+export/android/android_sdk_path = "/usr/local/lib/android/sdk"
+export/android/shutdown_adb_on_exit = true
+export/android/debug_keystore = "/home/runner/.android/debug.keystore"
+export/android/debug_keystore_user = "androiddebugkey"
+export/android/debug_keystore_password = "android"
+export/android/release_keystore = "/home/runner/.android/debug.keystore"
+export/android/release_keystore_user = "androiddebugkey"
+export/android/release_keystore_password = "android"
+export/android/jarsigner = "/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.21-9/x64/bin/jarsigner"
+--- jarsigner ---
+/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.21-9/x64/bin/jarsigner
+Usage: jarsigner [options] jar-file alias
+       jarsigner -verify [options] jar-file [alias...]
+--- sdk contents ---
+build-tools
+cmake
+cmdline-tools
+extras
+licenses
+ndk
+packages-list.txt
+platform-tools
+platforms
+34.0.0
+35.0.0
+35.0.1
+36.0.0
+36.1.0
+37.0.0
+===== validate.log =====
+(no script errors - all .gd files parse clean)
+===== import.log (last 150 lines) =====
+WARNING: Scan thread aborted...
+     at: _notification (editor/editor_file_system.cpp:1092)
+Godot Engine v3.5.2.stable.official.170ba337a - https://godotengine.org
+ 
+===== export.log (last 150 lines) =====
+Godot Engine v3.5.2.stable.official.170ba337a - https://godotengine.org
+ 
+reimport: begin: (Re)Importing Assets steps: 1
+	reimport: step 0: icon.svg
+export: begin: Exporting for Android steps: 105
+0 param: --xr_mode_regular
+1 param: --use_immersive
+	export: step 0: Creating APK...
+ADDING: classes.dex
+ADDING: lib/armeabi-v7a/libc++_shared.so
+ADDING: lib/armeabi-v7a/libgodot_android.so
+ADDING: kotlin-tooling-metadata.json
+ADDING: kotlin/annotation/annotation.kotlin_builtins
+ADDING: kotlin/collections/collections.kotlin_builtins
+ADDING: kotlin/coroutines/coroutines.kotlin_builtins
+ADDING: kotlin/internal/internal.kotlin_builtins
+ADDING: kotlin/kotlin.kotlin_builtins
+ADDING: kotlin/ranges/ranges.kotlin_builtins
+ADDING: kotlin/reflect/reflect.kotlin_builtins
+ADDING: AndroidManifest.xml
+ADDING: res/anim-v21/fragment_fast_out_extra_slow_in.xml
+ADDING: res/anim/fragment_fast_out_extra_slow_in.xml
+ADDING: res/animator/fragment_close_enter.xml
+ADDING: res/animator/fragment_close_exit.xml
+ADDING: res/animator/fragment_fade_enter.xml
+ADDING: res/animator/fragment_fade_exit.xml
+ADDING: res/animator/fragment_open_enter.xml
+ADDING: res/animator/fragment_open_exit.xml
+ADDING: res/drawable-hdpi-v4/notification_bg_low_normal.9.png
+ADDING: res/drawable-hdpi-v4/notification_bg_low_pressed.9.png
+ADDING: res/drawable-hdpi-v4/notification_bg_normal.9.png
+ADDING: res/drawable-hdpi-v4/notification_bg_normal_pressed.9.png
+ADDING: res/drawable-hdpi-v4/notify_panel_notification_icon_bg.png
+ADDING: res/drawable-mdpi-v4/notification_bg_low_normal.9.png
+ADDING: res/drawable-mdpi-v4/notification_bg_low_pressed.9.png
+ADDING: res/drawable-mdpi-v4/notification_bg_normal.9.png
+ADDING: res/drawable-mdpi-v4/notification_bg_normal_pressed.9.png
+ADDING: res/drawable-mdpi-v4/notify_panel_notification_icon_bg.png
+ADDING: res/drawable-nodpi-v4/splash.png
+ADDING: res/drawable-nodpi-v4/splash_bg_color.png
+ADDING: res/drawable-v21/notification_action_background.xml
+ADDING: res/drawable-xhdpi-v4/notification_bg_low_normal.9.png
+ADDING: res/drawable-xhdpi-v4/notification_bg_low_pressed.9.png
+ADDING: res/drawable-xhdpi-v4/notification_bg_normal.9.png
+ADDING: res/drawable-xhdpi-v4/notification_bg_normal_pressed.9.png
+ADDING: res/drawable-xhdpi-v4/notify_panel_notification_icon_bg.png
+ADDING: res/drawable/notification_bg.xml
+ADDING: res/drawable/notification_bg_low.xml
+ADDING: res/drawable/notification_icon_background.xml
+ADDING: res/drawable/notification_tile_bg.xml
+ADDING: res/drawable/splash_drawable.xml
+ADDING: res/layout-v16/notification_template_custom_big.xml
+ADDING: res/layout-v21/notification_action.xml
+ADDING: res/layout-v21/notification_action_tombstone.xml
+ADDING: res/layout-v21/notification_template_custom_big.xml
+ADDING: res/layout-v21/notification_template_icon_group.xml
+ADDING: res/layout/custom_dialog.xml
+ADDING: res/layout/downloading_expansion.xml
+ADDING: res/layout/godot_app_layout.xml
+ADDING: res/layout/notification_action.xml
+ADDING: res/layout/notification_action_tombstone.xml
+ADDING: res/layout/notification_template_icon_group.xml
+ADDING: res/layout/notification_template_part_chronometer.xml
+ADDING: res/layout/notification_template_part_time.xml
+ADDING: res/layout/status_bar_ongoing_event_progress_bar.xml
+ADDING: res/mipmap-anydpi-v26/icon.xml
+ADDING: res/mipmap-hdpi-v4/icon.png
+ADDING: res/mipmap-hdpi-v4/icon_background.png
+ADDING: res/mipmap-hdpi-v4/icon_foreground.png
+ADDING: res/mipmap-mdpi-v4/icon.png
+ADDING: res/mipmap-mdpi-v4/icon_background.png
+ADDING: res/mipmap-mdpi-v4/icon_foreground.png
+ADDING: res/mipmap-xhdpi-v4/icon.png
+ADDING: res/mipmap-xhdpi-v4/icon_background.png
+ADDING: res/mipmap-xhdpi-v4/icon_foreground.png
+ADDING: res/mipmap-xxhdpi-v4/icon.png
+ADDING: res/mipmap-xxhdpi-v4/icon_background.png
+ADDING: res/mipmap-xxhdpi-v4/icon_foreground.png
+ADDING: res/mipmap-xxxhdpi-v4/icon.png
+ADDING: res/mipmap-xxxhdpi-v4/icon_background.png
+ADDING: res/mipmap-xxxhdpi-v4/icon_foreground.png
+ADDING: res/mipmap/icon.png
+ADDING: res/mipmap/icon_background.png
+ADDING: res/mipmap/icon_foreground.png
+ADDING: resources.arsc
+	export: step 1: Adding files...
+	export: step 103: Aligning APK...
+	export: step 104: Signing release APK...
+	export: step 105: Verifying APK...
+export: end
+reimport: end
