@@ -7,7 +7,7 @@ const UiStyle = preload("res://scripts/ui/ui_theme.gd")
 var _fonts = {}
 
 func _ready():
-	add_style_override("panel", UiStyle.panel_style())
+	add_stylebox_override("panel", UiStyle.panel_style())
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 

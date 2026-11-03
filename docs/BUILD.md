@@ -6,18 +6,16 @@ Godot export** (full control).
 ## Option 1 — GitHub Actions (recommended)
 
 1. Fork or clone `gikoko611/G.I-KO-KO-MYANMAR-OPEN-WORLD-3D`.
-2. Push any commit to `main` — the **Android Build** workflow runs:
-   - imports the project headless,
-   - runs `godot --check-only --script` on **every** `.gd` file (parse gate),
+2. Push any commit to `main` — the **Android Build** workflow:
+   - downloads headless Godot 3.5.2 and the export templates,
+   - configures the Android SDK path + debug keystore in the editor
+     settings (`~/.config/godot/editor_settings-3.tres`, resource format),
+   - imports the project headless and reports any `SCRIPT ERROR` found,
    - exports `build/GiKoKoMyanmarOpenWorld3D.apk` with the Android preset,
    - verifies the APK contains `lib/armeabi-v7a/libgodot*.so`,
-   - uploads the APK as an artifact.
-3. Download the artifact from the workflow run page, or push a tag:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-   Tagged runs also attach the APK to a GitHub **Release**.
+   - uploads the APK as an artifact,
+   - **creates/updates the v1.0.0 GitHub Release with the APK** on success.
+3. Get the APK from the **Releases** page or the run artifact.
 4. Install on your phone (enable "install unknown apps"), then open.
 
 Target device: Android 10, armeabi-v7a (32-bit ARM), e.g. Redmi 9A.
@@ -70,8 +68,9 @@ press F5. Mouse input is mapped to the virtual joystick (left half) and camera
 
 ## Troubleshooting
 
-- **Workflow fails on "Validate scripts"** — open the log, find
-  `PARSE FAIL: scripts/...`, that file has a syntax error to fix.
+- **Workflow fails** — read `.ci-last-run.txt` on the `ci-status` branch:
+  it holds every step outcome plus the full setup / validate / import /
+  export logs.
 - **APK missing armeabi-v7a** — you exported with different templates; make
   sure the 3.5.2 templates are installed and the preset checkboxes are right.
 - **Black screen on phone** — the game needs GLES2 support (all Redmi 9A

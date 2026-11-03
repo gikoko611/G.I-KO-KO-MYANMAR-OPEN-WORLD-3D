@@ -10,10 +10,10 @@ func setup(k, pos, in_forest=false):
 	forest = in_forest
 	translation = pos
 	if k == "wood":
-		var log = Props.cyl(0.28, 0.28, 2.2, Color(0.42, 0.3, 0.18))
-		log.rotation_degrees = Vector3(0, rand_range(0.0, 360.0), 90)
-		log.translation = Vector3(0, 0.3, 0)
-		add_child(log)
+		var wood_log = Props.cyl(0.28, 0.28, 2.2, Color(0.42, 0.3, 0.18))
+		wood_log.rotation_degrees = Vector3(0, rand_range(0.0, 360.0), 90)
+		wood_log.translation = Vector3(0, 0.3, 0)
+		add_child(wood_log)
 	else:
 		var rock = Props.rock()
 		rock.translation = Vector3(0, 0.3, 0)

@@ -59,13 +59,17 @@ Mouse is also supported for desktop testing (left half = joystick).
 
 The easiest way — **GitHub Actions** builds it for you:
 
-1. Push this repo to GitHub (already done).
-2. Open the **Actions** tab → **Android Build** → wait for it to finish.
-3. Download the `GiKoKoMyanmarOpenWorld3D-apk` artifact, or push a tag
-   (`v1.0.0`) to get a downloadable **Release** APK.
+1. Push any commit to `main` (already done).
+2. Open the **Actions** tab → **Android Build** → wait for it to finish
+   (about 3–5 minutes).
+3. On success the APK is attached to the **v1.0.0 Release** automatically
+   (see the Releases page), or download the `GiKoKoMyanmarOpenWorld3D-apk`
+   artifact from the run page.
 
-The workflow also **validates every GDScript** with `--check-only`, so a red
-build means a script parse error to fix.
+The workflow downloads headless Godot 3.5.2 + export templates, configures
+the Android SDK and a debug keystore, imports and validates the whole
+project and exports the APK — no local tools needed. Diagnostics for each
+run are pushed to the `ci-status` branch.
 
 For a local build (Godot 3.5.2 + Android export templates + JDK + Android SDK),
 see [docs/BUILD.md](docs/BUILD.md).

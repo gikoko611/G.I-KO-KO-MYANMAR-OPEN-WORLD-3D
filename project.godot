@@ -45,4 +45,4 @@ common/physics_fps=30
 
 quality/driver/driver_name="GLES2"
 quality/shadows/filter_quality=0
-textures/vram_compression/import_etc=true
+vram_compression/import_etc=true
