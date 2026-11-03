@@ -13,50 +13,68 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
+        id: java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Godot 3.5.2 headless editor + export templates
+        id: install
         run: |
-          set -x
-          wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_linux_headless.64.zip
-          wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_export_templates.tpz
-          unzip -o Godot_v3.5.2-stable_linux_headless.64.zip
-          unzip -o Godot_v3.5.2-stable_export_templates.tpz
-          mkdir -p ~/.local/share/godot/templates/3.5.2.stable
-          mkdir -p ~/.config/godot
-          mv Godot_v3.5.2-stable_linux_headless.64 /usr/local/bin/godot
-          mv templates/* ~/.local/share/godot/templates/3.5.2.stable/
-          rm -f Godot_v3.5.2-stable_linux_headless.64.zip Godot_v3.5.2-stable_export_templates.tpz
-          godot --version
+          {
+            set -x
+            wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_linux_headless.64.zip
+            wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_export_templates.tpz
+            unzip -o Godot_v3.5.2-stable_linux_headless.64.zip
+            unzip -o Godot_v3.5.2-stable_export_templates.tpz
+            mkdir -p ~/.local/share/godot/templates/3.5.2.stable
+            mkdir -p ~/.config/godot
+            mv Godot_v3.5.2-stable_linux_headless.64 /usr/local/bin/godot
+            mv templates/* ~/.local/share/godot/templates/3.5.2.stable/
+            rm -f Godot_v3.5.2-stable_linux_headless.64.zip Godot_v3.5.2-stable_export_templates.tpz
+            which godot
+            godot --version
+            ls ~/.local/share/godot/templates/3.5.2.stable/
+          } > setup.log 2>&1
+          cat setup.log
 
       - name: Configure Godot editor settings (Android SDK)
+        id: settings
         run: |
-          mkdir -p ~/.config/godot
-          cat > ~/.config/godot/editor_settings-3.tres <<'EOF'
-          export/android/android_sdk_path = "/usr/local/lib/android/sdk"
-          export/android/shutdown_adb_on_exit = true
-          export/android/force_system_user = false
-          EOF
-          cat ~/.config/godot/editor_settings-3.tres
+          {
+            mkdir -p ~/.config/godot
+            cat > ~/.config/godot/editor_settings-3.tres <<'EOF'
+            export/android/android_sdk_path = "/usr/local/lib/android/sdk"
+            export/android/shutdown_adb_on_exit = true
+            export/android/force_system_user = false
+            EOF
+            echo "--- editor_settings-3.tres ---"
+            cat ~/.config/godot/editor_settings-3.tres
+            echo "--- sdk contents ---"
+            ls /usr/local/lib/android/sdk/ || true
+            ls /usr/local/lib/android/sdk/build-tools/ || true
+          } >> setup.log 2>&1
+          cat setup.log
 
       - name: Create Android debug keystore
+        id: keystore
         run: |
-          mkdir -p ~/.android
-          keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" 2>&1 | tail -2 || true
-          ls -la ~/.android/
+          {
+            mkdir -p ~/.android
+            keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || echo "keystore exists or keytool failed (non-fatal)"
+            ls -la ~/.android/
+          } >> setup.log 2>&1
+          cat setup.log
 
       - name: Open project once to import assets
+        id: import
         continue-on-error: true
-        run: timeout 25 godot --path . -e || echo "import step timed out or failed (non-fatal)"
+        run: timeout 25 godot --path . -e 2>&1 | tail -20 || echo "import step timed out or failed (non-fatal)"
 
       - name: Validate all scripts
         id: validate
@@ -86,6 +104,7 @@ jobs:
           ls -la build/
 
       - name: Verify ARMv7 library inside APK
+        id: verify
         run: |
           test -f build/GiKoKoMyanmarOpenWorld3D.apk
           unzip -l build/GiKoKoMyanmarOpenWorld3D.apk | grep -i "armeabi" || echo "WARNING: no armeabi entry listed"
@@ -120,13 +139,24 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B ci-status
           {
+            echo "sha: ${{ github.sha }}"
             echo "run: ${{ github.run_id }} attempt ${{ github.run_attempt }}"
-            echo "export outcome: ${{ steps.export.outcome }}"
-            echo "validate outcome: ${{ steps.validate.outcome }}"
+            echo "job status: ${{ job.status }}"
+            echo "step checkout: ${{ steps.checkout.outcome }}"
+            echo "step java: ${{ steps.java.outcome }}"
+            echo "step install: ${{ steps.install.outcome }}"
+            echo "step settings: ${{ steps.settings.outcome }}"
+            echo "step keystore: ${{ steps.keystore.outcome }}"
+            echo "step import: ${{ steps.import.outcome }}"
+            echo "step validate: ${{ steps.validate.outcome }}"
+            echo "step export: ${{ steps.export.outcome }}"
+            echo "step verify: ${{ steps.verify.outcome }}"
+            echo "===== setup.log ====="
+            cat setup.log 2>/dev/null || echo "(no setup.log)"
             echo "===== validate.log ====="
             cat validate.log 2>/dev/null || echo "(no validate.log)"
-            echo "===== export.log (last 120 lines) ====="
-            tail -120 export.log 2>/dev/null || echo "(no export.log)"
+            echo "===== export.log (last 150 lines) ====="
+            tail -150 export.log 2>/dev/null || echo "(no export.log)"
           } > .ci-last-run.txt
           git add .ci-last-run.txt
           git commit -m "ci: diagnostics for run ${{ github.run_id }}" || true
