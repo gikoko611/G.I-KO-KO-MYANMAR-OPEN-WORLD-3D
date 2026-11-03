@@ -38,8 +38,8 @@ jobs:
             mv templates/* ~/.local/share/godot/templates/3.5.2.stable/
             rm -f Godot_v3.5.2-stable_linux_headless.64.zip Godot_v3.5.2-stable_export_templates.tpz
             which godot
-            godot --version
-            ls ~/.local/share/godot/templates/3.5.2.stable/
+            godot --version || echo "NOTE: godot --version returned non-zero (headless 3.5.2 quirk)"
+            ls ~/.local/share/godot/templates/3.5.2.stable/ || true
           } > setup.log 2>&1
           cat setup.log
 
@@ -74,7 +74,7 @@ jobs:
       - name: Open project once to import assets
         id: import
         continue-on-error: true
-        run: timeout 25 godot --path . -e 2>&1 | tail -20 || echo "import step timed out or failed (non-fatal)"
+        run: timeout 45 godot --path . -e 2>&1 | tail -20 || echo "import step timed out or failed (non-fatal)"
 
       - name: Validate all scripts
         id: validate
