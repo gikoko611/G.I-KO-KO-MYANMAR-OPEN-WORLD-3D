@@ -20,8 +20,10 @@ var pending_new_game = false
 var pending_load = false
 var ui_open = 0
 
-# graphics preset: 0 low, 1 medium, 2 high
-var graphics = 1
+# graphics preset: 0 low, 1 medium, 2 high.
+# LOW is the default so a fresh install on a Redmi 9A (Helio G25, 3 GB RAM)
+# starts on the cheapest settings. Players can raise it in Settings.
+var graphics = 0
 var volumes = {"Music": 0.7, "SFX": 0.9, "Ambience": 0.5}
 
 func _ready():
@@ -70,23 +72,27 @@ func add_item(id, n=1):
 func remove_item(id, n=1):
 	return inventory.remove(id, n)
 
+func _g():
+	return int(clamp(graphics, 0, 2))
+
 func view_radius():
-	return [2, 3, 4][graphics]
+	return [2, 3, 4][_g()]
 
 func prop_density():
-	return [0.5, 0.8, 1.1][graphics]
+	return [0.5, 0.8, 1.1][_g()]
 
 func rain_amount():
-	return [250, 450, 700][graphics]
+	# LOW uses fewer rain particles to protect the Helio G25 GPU.
+	return [180, 450, 700][_g()]
 
 func fog_density():
-	return [0.6, 0.8, 1.0][graphics]
+	return [0.6, 0.8, 1.0][_g()]
 
 func shadows_enabled():
-	return graphics == 2
+	return _g() == 2
 
 func set_graphics(g):
-	graphics = clamp(int(g), 0, 2)
+	graphics = int(clamp(int(g), 0, 2))
 	Events.emit_signal("settings_changed")
 
 func set_volume(bus, v):
@@ -150,10 +156,12 @@ func save_dict():
 	}
 
 func load_dict(d):
+	if typeof(d) != TYPE_DICTIONARY:
+		d = {}
 	money = int(d.get("money", 500))
 	xp = int(d.get("xp", 0))
-	level = int(d.get("level", 1))
-	day = int(d.get("day", 1))
+	level = int(max(1, int(d.get("level", 1))))
+	day = int(max(1, int(d.get("day", 1))))
 	time = float(d.get("time", 7.0))
 	weather = str(d.get("weather", "sunny"))
 	story_stage = int(d.get("story_stage", 1))
@@ -161,14 +169,17 @@ func load_dict(d):
 	companion = bool(d.get("companion", false))
 	discovered = {}
 	var disc = d.get("discovered", {})
-	for k in disc.keys():
-		discovered[k] = bool(disc[k])
-	graphics = int(d.get("graphics", 1))
+	if typeof(disc) == TYPE_DICTIONARY:
+		for k in disc.keys():
+			discovered[k] = bool(disc[k])
+	graphics = int(clamp(int(d.get("graphics", 0)), 0, 2))
 	var vols = d.get("volumes", {})
-	for b in ["Music", "SFX", "Ambience"]:
-		if vols.has(b):
-			volumes[b] = float(vols[b])
+	if typeof(vols) == TYPE_DICTIONARY:
+		for b in ["Music", "SFX", "Ambience"]:
+			if vols.has(b):
+				volumes[b] = clamp(float(vols[b]), 0.0, 1.0)
 	inventory = InvList.new()
 	inventory.capacity = 60
-	inventory.load_dict(d.get("inventory", {}))
+	var inv = d.get("inventory", {})
+	inventory.load_dict(inv if typeof(inv) == TYPE_DICTIONARY else {})
 	ui_open = 0
