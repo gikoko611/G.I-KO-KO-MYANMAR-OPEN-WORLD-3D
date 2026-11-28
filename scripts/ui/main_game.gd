@@ -4,6 +4,7 @@ extends Node
 
 const WorldScript = preload("res://scripts/world/world.gd")
 const PlayerScript = preload("res://scripts/player/player.gd")
+const MobileActionsScript = preload("res://scripts/player/mobile_actions.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
 
 func _ready():
@@ -19,6 +20,9 @@ func _ready():
 	world.prewarm(player.translation.x, player.translation.z)
 	var hud = HudScript.new()
 	add_child(hud)
+	var mobile_actions = MobileActionsScript.new()
+	mobile_actions.setup(player)
+	add_child(mobile_actions)
 	GameState.apply_settings()
 	if GameState.pending_load:
 		SaveMgr.load_game()

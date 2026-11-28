@@ -2,6 +2,8 @@ name: Android Build
 
 on:
   push:
+    branches: [main, master, 'feature/**']
+  pull_request:
     branches: [main, master]
   workflow_dispatch:
 
@@ -13,154 +15,78 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        id: checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        id: java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Godot 3.5.2 headless editor + export templates
-        id: install
+      - name: Install Godot 3.5.2 headless and export templates
         run: |
-          {
-            set -x
-            wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_linux_headless.64.zip
-            wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_export_templates.tpz
-            unzip -o Godot_v3.5.2-stable_linux_headless.64.zip
-            unzip -o Godot_v3.5.2-stable_export_templates.tpz
-            mkdir -p ~/.local/share/godot/templates/3.5.2.stable
-            mkdir -p ~/.config/godot
-            mv Godot_v3.5.2-stable_linux_headless.64 /usr/local/bin/godot
-            mv templates/* ~/.local/share/godot/templates/3.5.2.stable/
-            rm -f Godot_v3.5.2-stable_linux_headless.64.zip Godot_v3.5.2-stable_export_templates.tpz
-            which godot
-            godot --version || echo "NOTE: godot --version returned non-zero (headless 3.5.2 quirk)"
-            ls ~/.local/share/godot/templates/3.5.2.stable/ || true
-          } > setup.log 2>&1
-          cat setup.log
+          wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_linux_headless.64.zip
+          wget -q https://github.com/godotengine/godot-builds/releases/download/3.5.2-stable/Godot_v3.5.2-stable_export_templates.tpz
+          unzip -q Godot_v3.5.2-stable_linux_headless.64.zip
+          unzip -q Godot_v3.5.2-stable_export_templates.tpz
+          sudo mv Godot_v3.5.2-stable_linux_headless.64 /usr/local/bin/godot
+          mkdir -p ~/.local/share/godot/templates/3.5.2.stable ~/.config/godot ~/.android
+          mv templates/* ~/.local/share/godot/templates/3.5.2.stable/
+          godot --version || true
 
       - name: Create Android debug keystore
-        id: keystore
         run: |
-          {
-            mkdir -p ~/.android
-            keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || echo "keystore exists or keytool failed (non-fatal)"
-            ls -la ~/.android/
-          } >> setup.log 2>&1
-          cat setup.log
+          keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Configure Godot editor settings (Android SDK + debug keystore)
-        id: settings
+      - name: Configure Android SDK
         run: |
-          {
-            mkdir -p ~/.config/godot
-            JS=$(command -v jarsigner || true)
-            {
-              echo '[gd_resource type="EditorSettings" format=2]'
-              echo ''
-              echo '[resource]'
-              echo 'export/android/android_sdk_path = "/usr/local/lib/android/sdk"'
-              echo 'export/android/shutdown_adb_on_exit = true'
-              echo 'export/android/debug_keystore = "/home/runner/.android/debug.keystore"'
-              echo 'export/android/debug_keystore_user = "androiddebugkey"'
-              echo 'export/android/debug_keystore_password = "android"'
-              echo 'export/android/release_keystore = "/home/runner/.android/debug.keystore"'
-              echo 'export/android/release_keystore_user = "androiddebugkey"'
-              echo 'export/android/release_keystore_password = "android"'
-              if [ -n "$JS" ]; then echo "export/android/jarsigner = \"$JS\""; fi
-            } > ~/.config/godot/editor_settings-3.tres
-            echo "--- editor_settings-3.tres ---"
-            cat ~/.config/godot/editor_settings-3.tres
-            echo "--- jarsigner ---"
-            command -v jarsigner || true
-            jarsigner -help 2>&1 | head -2 || true
-            echo "--- sdk contents ---"
-            ls /usr/local/lib/android/sdk/ || true
-            ls /usr/local/lib/android/sdk/build-tools/ || true
-          } >> setup.log 2>&1
-          cat setup.log
+          cat > ~/.config/godot/editor_settings-3.tres <<'EOF'
+          [gd_resource type="EditorSettings" format=2]
 
-      - name: Import project + validate all scripts
-        id: import
-        continue-on-error: true
-        run: |
-          timeout 90 godot --path . -e --quit > import.log 2>&1 || echo "NOTE: editor import exited non-zero (see import.log)"
-          tail -60 import.log
-          echo "===== script errors found in import.log ====="
-          grep -nE "SCRIPT ERROR|Parse Error" import.log > validate.log || echo "(no script errors - all .gd files parse clean)" > validate.log
-          cat validate.log
+          [resource]
+          export/android/android_sdk_path = "/usr/local/lib/android/sdk"
+          export/android/debug_keystore = "/home/runner/.android/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_password = "android"
+          export/android/release_keystore = "/home/runner/.android/debug.keystore"
+          export/android/release_keystore_user = "androiddebugkey"
+          export/android/release_keystore_password = "android"
+          EOF
 
-      - name: Export APK (ARMv7)
-        id: export
+      - name: Import project and reject script parse errors
         run: |
-          set -x
+          set +e
+          timeout 120 godot --path . -e --quit > import.log 2>&1
+          status=$?
+          set -e
+          cat import.log
+          if grep -nE "SCRIPT ERROR|Parse Error" import.log; then
+            echo "Godot reported a GDScript error"
+            exit 1
+          fi
+          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then
+            echo "Godot import failed with exit code $status"
+            exit "$status"
+          fi
+
+      - name: Export ARMv7 APK
+        run: |
           mkdir -p build
-          godot --path . --export "Android" build/GiKoKoMyanmarOpenWorld3D.apk > export.log 2>&1
-          cat export.log
-          test -f build/GiKoKoMyanmarOpenWorld3D.apk
-          ls -la build/
+          godot --path . --export "Android" build/GiKoKoMyanmarOpenWorld3D.apk 2>&1 | tee export.log
+          test -s build/GiKoKoMyanmarOpenWorld3D.apk
 
-      - name: Verify APK signature + ARMv7 library
-        id: verify
+      - name: Verify APK signature and ARMv7 payload
         run: |
-          test -f build/GiKoKoMyanmarOpenWorld3D.apk
-          unzip -l build/GiKoKoMyanmarOpenWorld3D.apk | grep -i "armeabi" || echo "WARNING: no armeabi entry listed"
           jarsigner -verify build/GiKoKoMyanmarOpenWorld3D.apk
+          unzip -l build/GiKoKoMyanmarOpenWorld3D.apk | grep -q "lib/armeabi-v7a/"
+          if unzip -l build/GiKoKoMyanmarOpenWorld3D.apk | grep -q "lib/arm64-v8a/"; then
+            echo "Unexpected ARM64 payload in ARMv7-only build"
+            exit 1
+          fi
 
       - name: Upload APK artifact
-        if: steps.export.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: GiKoKoMyanmarOpenWorld3D-apk
+          name: GiKoKoMyanmarOpenWorld3D-${{ github.sha }}
           path: build/GiKoKoMyanmarOpenWorld3D.apk
-
-      - name: Create GitHub Release v1.0.0
-        if: steps.export.outcome == 'success' && steps.verify.outcome == 'success'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v1.0.0
-          name: G.I KO KO - Myanmar Open World 3D v1.0.0
-          body: |
-            Open-world farming / survival / exploration game set in a Myanmar
-            river valley. Godot 3.5.2, GLES2, ARMv7 (armeabi-v7a) for Android
-            10+ - optimized for Redmi 9A class phones.
-
-            Note: all visuals and audio are procedural placeholders.
-
-            Powered by I KO KO
-          files: build/GiKoKoMyanmarOpenWorld3D.apk
-
-      - name: Push diagnostics to ci-status branch
-        if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B ci-status
-          {
-            echo "sha: ${{ github.sha }}"
-            echo "run: ${{ github.run_id }} attempt ${{ github.run_attempt }}"
-            echo "job status: ${{ job.status }}"
-            echo "step checkout: ${{ steps.checkout.outcome }}"
-            echo "step java: ${{ steps.java.outcome }}"
-            echo "step install: ${{ steps.install.outcome }}"
-            echo "step settings: ${{ steps.settings.outcome }}"
-            echo "step keystore: ${{ steps.keystore.outcome }}"
-            echo "step import: ${{ steps.import.outcome }}"
-            echo "step export: ${{ steps.export.outcome }}"
-            echo "step verify: ${{ steps.verify.outcome }}"
-            echo "===== setup.log ====="
-            cat setup.log 2>/dev/null || echo "(no setup.log)"
-            echo "===== validate.log ====="
-            cat validate.log 2>/dev/null || echo "(no validate.log)"
-            echo "===== import.log (last 150 lines) ====="
-            tail -150 import.log 2>/dev/null || echo "(no import.log)"
-            echo "===== export.log (last 150 lines) ====="
-            tail -150 export.log 2>/dev/null || echo "(no export.log)"
-          } > .ci-last-run.txt
-          git add .ci-last-run.txt
-          git commit -m "ci: diagnostics for run ${{ github.run_id }}" || true
-          git push origin ci-status --force
+          retention-days: 14
