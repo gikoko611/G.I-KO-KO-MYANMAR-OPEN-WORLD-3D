@@ -122,20 +122,20 @@ func _build_slot_picker():
 	for slot in range(1, SaveMgr.SLOT_COUNT + 1):
 		var summary = SaveMgr.slot_summary(slot)
 		var text = "Slot " + str(slot) + "  -  " + str(summary.get("label", "Empty slot"))
-		if slot == 1 and not summary.get("exists", false):
-			text += ""
 		var b = _panel_button(text)
 		b.disabled = slot_mode == "load" and not summary.get("exists", false)
 		vb.add_child(b)
 		b.connect("pressed", self, "_slot_chosen", [slot])
 	var note = Label.new()
-	note.text = ("Choosing a used slot starts a new game and overwrites it only after your first save." if slot_mode == "new" else "Each slot keeps an automatic backup if its newest file is damaged.")
+	# This text must match _pick_story(): the old save in a used slot is
+	# deleted at the moment the story is chosen, not later.
+	note.text = ("WARNING: a used slot is erased as soon as you pick your story. Empty slots are safe." if slot_mode == "new" else "Each slot keeps an automatic backup if its newest file is damaged.")
 	note.autowrap = true
 	note.rect_min_size = Vector2(520, 44)
 	var nf = _font(14)
 	if nf != null:
 		note.add_font_override("font", nf)
-	note.add_color_override("font_color", Color(0.8, 0.8, 0.75))
+	note.add_color_override("font_color", (UiStyle.RED if slot_mode == "new" else Color(0.8, 0.8, 0.75)))
 	vb.add_child(note)
 	var back = _panel_button("Back")
 	back.rect_min_size = Vector2(520, 54)
@@ -144,14 +144,16 @@ func _build_slot_picker():
 
 func _slot_chosen(slot):
 	selected_slot = int(slot)
-	SaveMgr.set_current_slot(selected_slot)
-	SaveMgr.save_settings()
 	AudioSynth.play("accept")
 	if slot_mode == "load":
+		SaveMgr.set_current_slot(selected_slot)
+		SaveMgr.save_settings()
 		GameState.pending_load = true
 		GameState.pending_new_game = false
 		get_tree().change_scene("res://scenes/main.tscn")
 	else:
+		# Nothing is changed on disk yet; the slot is only committed in
+		# _pick_story() so Back leaves every save untouched.
 		_build_story_picker()
 		slot_box.visible = false
 		story_box.visible = true
@@ -172,6 +174,8 @@ func _build_story_picker():
 	vb.add_child(t)
 	var desc = Label.new()
 	desc.text = "Your choice sets your starting bonus. The world is the same - your path is yours."
+	if SaveMgr.has_save(selected_slot):
+		desc.text += " Choosing a story now erases the game saved in slot " + str(selected_slot) + "."
 	var df = _font(15)
 	if df != null:
 		desc.add_font_override("font", df)
