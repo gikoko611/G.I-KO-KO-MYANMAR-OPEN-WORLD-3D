@@ -1,24 +1,27 @@
 extends "res://scripts/ui/panel_base.gd"
-# Pause panel: resume, save, load, settings (graphics + volumes), quit.
+# Pause panel: current-slot save/load, settings and quit.
 
 var settings_box = null
 var graphics_label = null
+var slot_label = null
 
 func _ready():
 	set_anchors_preset(Control.PRESET_CENTER)
-	rect_min_size = Vector2(460, 420)
-	rect_position = Vector2(-230, -210)
+	rect_min_size = Vector2(460, 470)
+	rect_position = Vector2(-230, -235)
 	var vb = VBoxContainer.new()
 	add_child(vb)
 	vb.set_anchors_preset(Control.PRESET_WIDE)
 	vb.add_child(ui_title("Paused"))
+	slot_label = ui_label("", 15, Color(0.8, 0.8, 0.75))
+	vb.add_child(slot_label)
 	var resume = ui_button("Resume")
 	vb.add_child(resume)
 	resume.connect("pressed", self, "close")
-	var save_btn = ui_button("Save Game")
+	var save_btn = ui_button("Save Current Slot")
 	vb.add_child(save_btn)
 	save_btn.connect("pressed", self, "_save")
-	var load_btn = ui_button("Load Last Save")
+	var load_btn = ui_button("Reload Current Slot")
 	vb.add_child(load_btn)
 	load_btn.connect("pressed", self, "_load")
 	var settings_btn = ui_button("Settings")
@@ -67,11 +70,20 @@ func _ready():
 func open():
 	.open()
 	settings_box.visible = false
+	_refresh_slot_label()
+
+func _refresh_slot_label():
+	if slot_label == null:
+		return
+	var slot = SaveMgr.get_current_slot()
+	var summary = SaveMgr.slot_summary(slot)
+	slot_label.text = "Current save: Slot " + str(slot) + "  -  " + str(summary.get("label", "Not saved yet"))
 
 func _save():
 	AudioSynth.play("accept")
 	SaveMgr.save_game(true)
 	SaveMgr.save_settings()
+	_refresh_slot_label()
 
 func _load():
 	AudioSynth.play("click")
@@ -92,6 +104,7 @@ func _set_graphics(i):
 func _set_vol(v, bus):
 	GameState.set_volume(bus, v)
 	GameState.apply_settings()
+	SaveMgr.save_settings()
 
 func _quit():
 	AudioSynth.play("click")

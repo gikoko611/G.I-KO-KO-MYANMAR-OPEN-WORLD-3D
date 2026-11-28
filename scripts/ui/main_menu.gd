@@ -1,33 +1,42 @@
 extends Control
-# Main menu: title, New Game (story picker), Continue, About, Quit.
+# Main menu with three save slots. New Game chooses an empty/overwrite slot;
+# Continue loads a selected occupied slot. All controls are touch sized.
 
 const UiStyle = preload("res://scripts/ui/ui_theme.gd")
 
 var story_box = null
 var about_box = null
+var slot_box = null
+var slot_mode = "load"
+var selected_slot = 1
 var _fonts = {}
 
 func _ready():
 	set_anchors_preset(Control.PRESET_WIDE)
-	_label("G.I KO KO", 58, UiStyle.GOLD, 400, 60)
-	_label("MYANMAR OPEN WORLD 3D", 26, Color(0.83, 0.68, 0.2), 445, 130)
-	_label("Powered by I KO KO", 16, Color(0.6, 0.56, 0.5), 535, 165)
-	_btn("New Game", 490, 240, 300, 56, "_new_game")
-	var cont = _btn("Continue", 490, 306, 300, 56, "_continue")
-	if not SaveMgr.has_save():
-		cont.disabled = true
-	_btn("About", 490, 372, 300, 56, "_about")
-	_btn("Quit", 490, 438, 300, 56, "_quit")
+	_label("G.I KO KO", 58, UiStyle.GOLD, 400, 50)
+	_label("MYANMAR OPEN WORLD 3D", 26, Color(0.83, 0.68, 0.2), 445, 120)
+	_label("Powered by I KO KO", 16, Color(0.6, 0.56, 0.5), 535, 155)
+	_btn("New Game", 490, 220, 300, 56, "_new_game")
+	var cont = _btn("Continue", 490, 286, 300, 56, "_continue")
+	cont.disabled = not SaveMgr.has_any_save()
+	_btn("About", 490, 352, 300, 56, "_about")
+	_btn("Quit", 490, 418, 300, 56, "_quit")
+	slot_box = PanelContainer.new()
+	slot_box.add_style_override("panel", UiStyle.panel_style())
+	slot_box.rect_position = Vector2(350, 155)
+	slot_box.rect_min_size = Vector2(580, 440)
+	slot_box.visible = false
+	add_child(slot_box)
 	story_box = PanelContainer.new()
 	story_box.add_style_override("panel", UiStyle.panel_style())
-	story_box.rect_position = Vector2(330, 200)
-	story_box.rect_min_size = Vector2(620, 420)
+	story_box.rect_position = Vector2(330, 155)
+	story_box.rect_min_size = Vector2(620, 470)
 	story_box.visible = false
 	add_child(story_box)
 	about_box = PanelContainer.new()
 	about_box.add_style_override("panel", UiStyle.panel_style())
-	about_box.rect_position = Vector2(390, 220)
-	about_box.rect_min_size = Vector2(500, 300)
+	about_box.rect_position = Vector2(390, 200)
+	about_box.rect_min_size = Vector2(500, 340)
 	about_box.visible = false
 	add_child(about_box)
 	_build_about()
@@ -69,19 +78,93 @@ func _btn(text, x, y, w, h, method):
 	add_child(b)
 	return b
 
+func _panel_button(text):
+	var b = Button.new()
+	b.text = text
+	b.rect_min_size = Vector2(520, 70)
+	UiStyle.style_button(b)
+	var f = _font(18)
+	if f != null:
+		b.add_font_override("font", f)
+	return b
+
+func _clear(container):
+	for c in container.get_children():
+		container.remove_child(c)
+		c.queue_free()
+
 func _new_game():
 	AudioSynth.play("click")
-	_build_story_picker()
-	story_box.visible = true
+	_open_slots("new")
+
+func _continue():
+	AudioSynth.play("click")
+	_open_slots("load")
+
+func _open_slots(mode):
+	slot_mode = mode
+	about_box.visible = false
+	story_box.visible = false
+	_build_slot_picker()
+	slot_box.visible = true
+
+func _build_slot_picker():
+	_clear(slot_box)
+	var vb = VBoxContainer.new()
+	slot_box.add_child(vb)
+	var title = Label.new()
+	title.text = "Choose a slot to " + ("start" if slot_mode == "new" else "continue")
+	var tf = _font(24)
+	if tf != null:
+		title.add_font_override("font", tf)
+	title.add_color_override("font_color", UiStyle.GOLD)
+	vb.add_child(title)
+	for slot in range(1, SaveMgr.SLOT_COUNT + 1):
+		var summary = SaveMgr.slot_summary(slot)
+		var text = "Slot " + str(slot) + "  -  " + str(summary.get("label", "Empty slot"))
+		if slot == 1 and not summary.get("exists", false):
+			text += ""
+		var b = _panel_button(text)
+		b.disabled = slot_mode == "load" and not summary.get("exists", false)
+		vb.add_child(b)
+		b.connect("pressed", self, "_slot_chosen", [slot])
+	var note = Label.new()
+	note.text = ("Choosing a used slot starts a new game and overwrites it only after your first save." if slot_mode == "new" else "Each slot keeps an automatic backup if its newest file is damaged.")
+	note.autowrap = true
+	note.rect_min_size = Vector2(520, 44)
+	var nf = _font(14)
+	if nf != null:
+		note.add_font_override("font", nf)
+	note.add_color_override("font_color", Color(0.8, 0.8, 0.75))
+	vb.add_child(note)
+	var back = _panel_button("Back")
+	back.rect_min_size = Vector2(520, 54)
+	vb.add_child(back)
+	back.connect("pressed", self, "_close_slots")
+
+func _slot_chosen(slot):
+	selected_slot = int(slot)
+	SaveMgr.set_current_slot(selected_slot)
+	SaveMgr.save_settings()
+	AudioSynth.play("accept")
+	if slot_mode == "load":
+		GameState.pending_load = true
+		GameState.pending_new_game = false
+		get_tree().change_scene("res://scenes/main.tscn")
+	else:
+		_build_story_picker()
+		slot_box.visible = false
+		story_box.visible = true
+
+func _close_slots():
+	slot_box.visible = false
 
 func _build_story_picker():
-	for c in story_box.get_children():
-		story_box.remove_child(c)
-		c.queue_free()
+	_clear(story_box)
 	var vb = VBoxContainer.new()
 	story_box.add_child(vb)
 	var t = Label.new()
-	t.text = "Who are you in the valley of Myaing?"
+	t.text = "Who are you in the valley of Myaing?  Slot " + str(selected_slot)
 	var tf = _font(24)
 	if tf != null:
 		t.add_font_override("font", tf)
@@ -115,13 +198,16 @@ func _build_story_picker():
 		hb.add_child(b)
 		b.connect("pressed", self, "_pick_story", [sid])
 	var cancel = Button.new()
-	cancel.text = "Back"
+	cancel.text = "Back to slots"
 	UiStyle.style_button(cancel)
 	vb.add_child(cancel)
 	cancel.connect("pressed", self, "_close_story")
 
 func _pick_story(sid):
 	AudioSynth.play("accept")
+	SaveMgr.set_current_slot(selected_slot)
+	SaveMgr.delete_save(selected_slot)
+	SaveMgr.save_settings()
 	GameState.story_choice = sid
 	GameState.pending_new_game = true
 	GameState.pending_load = false
@@ -129,20 +215,15 @@ func _pick_story(sid):
 
 func _close_story():
 	story_box.visible = false
-
-func _continue():
-	AudioSynth.play("click")
-	GameState.pending_load = true
-	GameState.pending_new_game = false
-	get_tree().change_scene("res://scenes/main.tscn")
+	_open_slots("new")
 
 func _about():
+	slot_box.visible = false
+	story_box.visible = false
 	about_box.visible = not about_box.visible
 
 func _build_about():
-	for c in about_box.get_children():
-		about_box.remove_child(c)
-		c.queue_free()
+	_clear(about_box)
 	var vb = VBoxContainer.new()
 	about_box.add_child(vb)
 	var lines = [
@@ -154,6 +235,7 @@ func _build_about():
 		"race vehicles, dig for treasure, befriend the village,",
 		"and follow 85+ missions and stories.",
 		"",
+		"Three local save slots with automatic backups.",
 		"Powered by I KO KO",
 		"Made with Godot 3.5.2 (GLES2)"
 	]
